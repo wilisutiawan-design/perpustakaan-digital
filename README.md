@@ -1,3 +1,9 @@
+# Perpustakaan Digital
+
+## Buka Aplikasi
+
+[Klik di sini untuk membuka Perpustakaan Digital](https://script.google.com/macros/s/AKfycbxaVyIAuVEt3yQH3K5mLIJniusY7JJkQzadMsetVDUoUXSnZVKdwZN4TN0f9-TGXvVJqQ/exec)
+
 # Perpustakaan Digital — Google Apps Script + Spreadsheet + GitHub
 
 Paket ini adalah aplikasi web responsif untuk perpustakaan pribadi. Backend dan hosting aplikasi menggunakan Google Apps Script, database menggunakan Google Spreadsheet, file sampul buku disimpan di Google Drive, sedangkan GitHub menjadi tempat backup source code.
