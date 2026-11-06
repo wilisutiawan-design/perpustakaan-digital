@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{--g:#173f35;--gold:#d8ad55;--bg:#f3f6f3;--ink:#26352e;--muted:#728078}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px Arial,sans-serif}
+header{background:var(--g);color:white;padding:22px max(18px,calc((100% - 1150px)/2))}header h1{margin:0;font-size:23px}header p{margin:7px 0 0;color:#dce8e1}
+main{max-width:1150px;margin:auto;padding:18px}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}
+.stat,.panel{background:#fff;border-radius:15px;padding:16px;box-shadow:0 3px 14px #183d3010}.stat small{color:var(--muted)}.stat strong{display:block;font-size:24px;color:var(--g);margin-top:8px}
+nav{display:flex;gap:8px;overflow:auto;margin:16px 0}button{border:0;border-radius:9px;padding:11px 14px;background:var(--g);color:#fff;font-weight:600;cursor:pointer;white-space:nowrap}
+nav button{background:#e1e9e3;color:var(--g)}nav button.active{background:var(--gold);color:#26352e}
+.panel{margin-bottom:16px}.panel h2{font-size:18px;margin:0 0 14px}.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field label{display:block;color:var(--muted);font-size:13px;margin-bottom:5px}
+input{width:100%;padding:12px;border:1px solid #d8e0da;border-radius:9px;font-size:15px;background:white}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.notice{background:#fff5df;padding:11px;border-radius:9px;font-size:13px;margin-bottom:12px}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:670px}th,td{text-align:left;padding:11px;border-bottom:1px solid #edf0ed;font-size:13px}th{background:#f8faf8;color:var(--muted)}
+.cover{width:48px;height:64px;object-fit:cover;border-radius:5px;background:#eef1ee}.muted{font-size:13px;color:var(--muted)}#reader,#loanReader{max-width:430px;margin:12px auto}
+.bookgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}.bookcard{border:1px solid #edf0ed;border-radius:12px;padding:10px}.bookcard img{width:100%;height:150px;object-fit:contain;background:#f4f6f4;border-radius:8px}.bookcard b{display:block;margin:8px 0 4px;font-size:14px}.pill{display:inline-block;padding:4px 8px;border-radius:20px;background:#e8f2e9;color:#245d42;font-size:11px}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.stats .stat:last-child{grid-column:span 2}}
+@media(max-width:600px){main{padding:12px}header{padding:18px}header h1{font-size:20px}.grid{grid-template-columns:1fr}.stat{padding:13px}.stat strong{font-size:21px}}
+@media print{body{background:white}header,nav,.no-print,.stats{display:none!important}main{padding:0}.panel{box-shadow:none}}
+</style></head>
+<body>
+<header><h1>📚 Perpustakaan Digital</h1><p>Kelola koleksi buku, peminjaman, pengembalian, dan laporan</p></header>
+<main>
+<section class="stats">
+<div class="stat"><small>Judul Buku</small><strong id="sTitles">0</strong></div><div class="stat"><small>Total Eksemplar</small><strong id="sCopies">0</strong></div>
+<div class="stat"><small>Tersedia</small><strong id="sAvailable">0</strong></div><div class="stat"><small>Dipinjam</small><strong id="sBorrowed">0</strong></div><div class="stat"><small>Terlambat</small><strong id="sOverdue">0</strong></div>
+</section>
+<nav class="no-print">
+<button class="active" onclick="tab('catalog',this)">Koleksi</button><button onclick="tab('add',this)">Tambah Buku</button>
+<button onclick="tab('loan',this)">Peminjaman</button><button onclick="tab('history',this)">Riwayat</button>
+<button onclick="tab('report',this)">Laporan</button><button onclick="tab('card',this)">Cetak Kartu</button>
+</nav>
+<section id="catalog" class="panel">
+<h2>Katalog Buku</h2><input id="search" placeholder="Cari judul, penulis, ISBN, kategori..." oninput="loadBooks()">
+<div class="bookgrid" id="catalogGrid" style="margin-top:14px"></div>
+</section>
+<section id="add" class="panel hidden">
+<h2>Tambah Buku</h2><div class="notice">Scan barcode ISBN di belakang buku. Data buku dicari melalui Google Books. Sampul bisa diunggah dari perangkat. Jika ISBN tidak ditemukan, isi data secara manual.</div>
+<label>ISBN</label><input id="isbn" placeholder="ISBN-13 / ISBN-10">
+<div class="actions"><button onclick="startScan('reader','isbn',true)">📷 Scan Barcode</button><button onclick="lookup()">Cari Data ISBN</button><button class="no-print" onclick="stopScanners()">Tutup Kamera</button></div><div id="reader"></div>
+<div class="grid">
+<div class="field"><label>Judul Buku *</label><input id="title"></div><div class="field"><label>Penulis</label><input id="author"></div>
+<div class="field"><label>Penerbit</label><input id="publisher"></div><div class="field"><label>Tahun</label><input id="year"></div>
+<div class="field"><label>Kategori</label><input id="category"></div><div class="field"><label>Lokasi Rak</label><input id="shelf" placeholder="A-01"></div>
+<div class="field"><label>Jumlah eksemplar</label><input id="total" type="number" min="1" value="1"></div>
+<div class="field"><label>Foto sampul (maks. 3 MB)</label><input id="coverFile" type="file" accept="image/jpeg,image/png,image/webp" onchange="previewCover()"></div>
+</div><img id="coverPreview" class="cover hidden" style="margin-top:12px;width:90px;height:120px">
+<div class="actions"><button onclick="saveBook()">Simpan Buku</button></div>
+</section>
+<section id="loan" class="panel hidden"><h2>Catat Peminjaman</h2><div class="grid">
+<div class="field"><label>ISBN Buku *</label><input id="loanIsbn"></div><div class="field"><label>Nama Peminjam *</label><input id="borrower"></div>
+<div class="field"><label>Kontak (opsional)</label><input id="contact"></div><div class="field"><label>Jumlah eksemplar</label><input id="qty" type="number" min="1" value="1"></div>
+</div><div class="actions"><button onclick="startScan('loanReader','loanIsbn',false)">📷 Scan ISBN</button><button onclick="borrow()">Simpan Peminjaman</button></div><div id="loanReader"></div></section>
+<section id="history" class="panel hidden"><h2>Riwayat Peminjaman</h2><div class="tablewrap"><table><thead><tr><th>ID</th><th>Tanggal</th><th>Peminjam</th><th>Buku</th><th>Jumlah</th><th>Jatuh Tempo</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="loanRows"></tbody></table></div></section>
+<section id="report" class="panel hidden"><h2>Laporan Bulanan</h2><div class="actions no-print"><input type="month" id="reportMonth" style="max-width:190px"><button onclick="loadReport()">Tampilkan</button><button onclick="window.print()">Cetak / Simpan PDF</button></div>
+<div id="reportSummary" style="margin:15px 0"></div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Peminjam</th><th>Judul</th><th>Jumlah</th><th>Status</th></tr></thead><tbody id="reportRows"></tbody></table></div></section>
+<section id="card" class="panel hidden"><h2>Cetak Kartu Perpustakaan</h2><div class="notice">Sesuai pilihan Anda, aplikasi tidak menyimpan database anggota. Isi nama secara manual untuk membuat kartu saat diperlukan.</div>
+<div class="grid no-print"><div class="field"><label>Nama pemegang kartu</label><input id="cardName" placeholder="Nama lengkap"></div><div class="field"><label>Nomor kartu (opsional)</label><input id="cardNumber" placeholder="P-0001"></div></div>
+<div class="actions no-print"><button onclick="makeCard()">Buat Kartu</button><button onclick="window.print()">Cetak Kartu</button></div>
+<div id="printCard" style="display:none;border:2px solid #173f35;border-radius:15px;padding:22px;max-width:380px;margin:20px auto;background:#f8fbf8">
+<div style="font-size:12px;letter-spacing:2px;color:#b1842e">KARTU ANGGOTA</div><h2 style="color:#173f35;margin:8px 0">Perpustakaan Digital</h2><hr><div style="font-size:12px;color:#728078">NAMA PEMEGANG</div><h3 id="pcName"></h3><div style="font-size:12px;color:#728078">NOMOR KARTU</div><b id="pcNumber"></b><p style="font-size:11px;color:#728078;margin-bottom:0">Kartu dibuat secara lokal, data anggota tidak disimpan.</p></div></section>
+<p class="muted no-print">Data utama tersimpan di Google Spreadsheet. Foto sampul disimpan di Google Drive.</p>
+</main>
+<script>
+let scanners={};
+const $=id=>document.getElementById(id);
+function run(fn,args,ok){google.script.run.withSuccessHandler(ok||(()=>{})).withFailureHandler(e=>alert(e.message||e))[fn](...(args||[]))}
+function tab(id,btn){document.querySelectorAll('main>section.panel').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');if(id==='history')loadLoans();if(id==='catalog')loadBooks();if(id==='report')loadReport()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function refresh(){run('getDashboard',[],d=>{sTitles.textContent=d.titles;sCopies.textContent=d.copies;sAvailable.textContent=d.available;sBorrowed.textContent=d.borrowed;sOverdue.textContent=d.overdue});loadBooks()}
+function loadBooks(){run('getBooks',[$('search').value],rows=>{$('catalogGrid').innerHTML=rows.map(b=>`<article class="bookcard">${b.cover?`<img src="${esc(b.cover)}" alt="Sampul">`:'<div style="height:150px;background:#f0f3f0;border-radius:8px;display:grid;place-items:center">📖</div>'}<b>${esc(b.title)}</b><div class="muted">${esc(b.author)}</div><div class="muted">${esc(b.isbn)}</div><p><span class="pill">${b.available} tersedia / ${b.total} total</span></p><div class="muted">Rak: ${esc(b.shelf)}</div></article>`).join('')||'<p class="muted">Belum ada buku. Tambahkan buku pertama Anda.</p>'})}
+function lookup(){if(!$('isbn').value.trim())return alert('Masukkan ISBN.');run('lookupIsbn',[$('isbn').value],d=>{isbn.value=d.isbn;title.value=d.title;author.value=d.author;publisher.value=d.publisher;year.value=d.year;category.value=d.category;if(d.cover&&!coverFile.files.length){coverPreview.src=d.cover;coverPreview.classList.remove('hidden')}})}
+function previewCover(){const f=coverFile.files[0];if(!f)return;if(f.size>3*1024*1024){alert('Ukuran maksimal 3 MB');coverFile.value='';return}coverPreview.src=URL.createObjectURL(f);coverPreview.classList.remove('hidden')}
+function fileData(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
+async function saveBook(){try{const f=coverFile.files[0];const b={isbn:isbn.value,title:title.value,author:author.value,publisher:publisher.value,year:year.value,category:category.value,shelf:shelf.value,total:total.value,coverData:f?await fileData(f):''};run('addBook',[b],r=>{alert(r.message);['isbn','title','author','publisher','year','category','shelf'].forEach(id=>$(id).value='');coverFile.value='';coverPreview.classList.add('hidden');total.value=1;refresh()})}catch(e){alert(e.message)}}
+async function startScan(element,target,autoLookup){stopScanners();if(!window.Html5Qrcode)return alert('Library scanner belum termuat. Periksa koneksi internet.');const scanner=new Html5Qrcode(element);scanners[element]=scanner;try{await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:115},formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.UPC_A]},txt=>{$(target).value=txt;scanner.stop().catch(()=>{});delete scanners[element];if(autoLookup)lookup()},()=>{})}catch(e){alert('Kamera tidak dapat dibuka. Izinkan akses kamera dan gunakan URL HTTPS. '+e)}}
+function stopScanners(){Object.keys(scanners).forEach(k=>{scanners[k].stop().catch(()=>{});delete scanners[k]})}
+function borrow(){run('createLoan',[{isbn:loanIsbn.value,name:borrower.value,contact:contact.value,qty:qty.value}],r=>{alert(r.message);loanIsbn.value='';borrower.value='';contact.value='';qty.value=1;refresh()})}
+function loadLoans(){run('getLoans',[],rows=>{loanRows.innerHTML=rows.map(x=>`<tr><td>${esc(x.id)}</td><td>${x.date}</td><td>${esc(x.name)}</td><td>${esc(x.title)}</td><td>${x.qty}</td><td>${x.due}${x.overdue?' ⚠':''}</td><td>${x.status}</td><td>${x.status==='Dipinjam'?`<button onclick="returnBook('${esc(x.id)}')">Kembalikan</button>`:'-'}</td></tr>`).join('')})}
+function returnBook(id){if(confirm('Konfirmasi buku sudah dikembalikan?'))run('returnLoan',[id],r=>{alert(r.message);loadLoans();refresh()})}
+function loadReport(){const m=$('reportMonth');if(!m.value)m.value=new Date().toISOString().slice(0,7);run('getMonthlyReport',[m.value],r=>{$('reportSummary').innerHTML=`<b>Periode ${r.month}</b><p>${r.transactions} transaksi · ${r.borrowedCopies} eksemplar dipinjam · ${r.returnedTransactions} transaksi kembali · ${r.active} masih dipinjam</p>`;$('reportRows').innerHTML=r.rows.map(x=>`<tr><td>${x.date}</td><td>${esc(x.name)}</td><td>${esc(x.title)}</td><td>${x.qty}</td><td>${x.status}</td></tr>`).join('')})}
+function makeCard(){if(!$('cardName').value.trim())return alert('Isi nama pemegang kartu.');$('pcName').textContent=$('cardName').value;$('pcNumber').textContent=$('cardNumber').value||'—';$('printCard').style.display='block'}
+run('getSettings',[],s=>{document.title=s['Nama Perpustakaan']||'Perpustakaan Digital';refresh()});
+</script></body></html>
